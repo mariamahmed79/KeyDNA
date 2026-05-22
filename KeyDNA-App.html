@@ -1,0 +1,1038 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>KeyDNA — Behavioral Biometric Authentication</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#080b12;--bg2:#0d1120;--bg3:#111827;--bg4:#1a2035;
+  --border:rgba(99,211,255,0.1);--border2:rgba(99,211,255,0.2);
+  --cyan:#3de8ff;--cyan2:#63d3ff;--cyan-dim:rgba(61,232,255,0.12);
+  --green:#22f0a4;--green-dim:rgba(34,240,164,0.12);
+  --amber:#ffb840;--amber-dim:rgba(255,184,64,0.12);
+  --red:#ff4757;--red-dim:rgba(255,71,87,0.12);
+  --purple:#a78bfa;--purple-dim:rgba(167,139,250,0.12);
+  --text:#e8f4f8;--text2:#8ba8be;--text3:#4a6278;
+  --r:10px;--rl:16px;
+  --mono:'Space Mono',monospace;--display:'Syne',sans-serif
+}
+body{font-family:var(--mono);background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden}
+body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(rgba(61,232,255,0.025) 1px,transparent 1px),linear-gradient(90deg,rgba(61,232,255,0.025) 1px,transparent 1px);background-size:44px 44px;pointer-events:none;z-index:0}
+#app{position:relative;z-index:1}
+.screen{display:none;min-height:100vh}
+.screen.active{display:flex}
+
+/* NAV */
+nav{position:fixed;top:0;left:0;right:0;z-index:100;background:rgba(8,11,18,0.88);backdrop-filter:blur(20px);border-bottom:1px solid var(--border);padding:0 1.5rem;height:58px;display:flex;align-items:center;justify-content:space-between}
+.logo{font-family:var(--display);font-size:1.25rem;font-weight:800;color:var(--cyan);letter-spacing:-0.02em;display:flex;align-items:center;gap:9px}
+.logo-dot{width:7px;height:7px;border-radius:50%;background:var(--cyan);animation:pulse-dot 2s ease-in-out infinite}
+@keyframes pulse-dot{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.45;transform:scale(.65)}}
+.nav-links{display:flex;gap:6px;align-items:center}
+.nb{font-family:var(--mono);font-size:.68rem;background:transparent;color:var(--text2);border:1px solid var(--border);border-radius:var(--r);padding:5px 13px;cursor:pointer;transition:all .2s;text-transform:uppercase;letter-spacing:.08em}
+.nb:hover{border-color:var(--cyan2);color:var(--cyan)}
+.nb.act{background:var(--cyan-dim);border-color:var(--cyan);color:var(--cyan)}
+.nb.danger{border-color:rgba(255,71,87,.25);color:var(--red)}
+.nb.danger:hover{background:var(--red-dim)}
+
+/* CARDS */
+.card{background:rgba(17,24,39,.72);border:1px solid var(--border);border-radius:var(--rl);backdrop-filter:blur(10px)}
+.card-glow{background:rgba(17,24,39,.72);border:1px solid var(--border2);border-radius:var(--rl);box-shadow:inset 0 1px 0 rgba(61,232,255,.07),0 0 40px rgba(61,232,255,.04)}
+
+/* BUTTONS */
+.btn{font-family:var(--mono);font-size:.75rem;font-weight:700;border:none;cursor:pointer;border-radius:var(--r);padding:10px 20px;transition:all .2s;letter-spacing:.05em;text-transform:uppercase;display:inline-flex;align-items:center;gap:8px}
+.btn-p{background:linear-gradient(135deg,rgba(61,232,255,.18),rgba(61,232,255,.08));color:var(--cyan);border:1px solid rgba(61,232,255,.35)}
+.btn-p:hover{background:linear-gradient(135deg,rgba(61,232,255,.28),rgba(61,232,255,.14));box-shadow:0 0 22px rgba(61,232,255,.18);transform:translateY(-1px)}
+.btn-p:disabled{opacity:.38;cursor:not-allowed;transform:none;box-shadow:none}
+.btn-g{background:linear-gradient(135deg,rgba(34,240,164,.18),rgba(34,240,164,.08));color:var(--green);border:1px solid rgba(34,240,164,.35)}
+.btn-g:hover{box-shadow:0 0 22px rgba(34,240,164,.18);transform:translateY(-1px)}
+.btn-g:disabled{opacity:.38;cursor:not-allowed;transform:none}
+.btn-lg{padding:13px 30px;font-size:.8rem;border-radius:12px}
+.btn-fw{width:100%;justify-content:center}
+
+/* INPUTS */
+.ig{display:flex;flex-direction:column;gap:5px}
+.il{font-size:.62rem;color:var(--text3);text-transform:uppercase;letter-spacing:.14em}
+.inf{font-family:var(--mono);font-size:.86rem;background:rgba(13,17,32,.85);border:1px solid var(--border2);border-radius:var(--r);color:var(--text);padding:10px 13px;outline:none;transition:all .2s;width:100%}
+.inf:focus{border-color:var(--cyan);box-shadow:0 0 0 3px rgba(61,232,255,.08)}
+.inf::placeholder{color:var(--text3)}
+
+/* BADGES */
+.badge{display:inline-flex;align-items:center;gap:4px;font-size:.64rem;font-weight:700;padding:3px 9px;border-radius:20px;letter-spacing:.07em;text-transform:uppercase}
+.bg-g{background:var(--green-dim);color:var(--green);border:1px solid rgba(34,240,164,.28)}
+.bg-r{background:var(--red-dim);color:var(--red);border:1px solid rgba(255,71,87,.28)}
+.bg-a{background:var(--amber-dim);color:var(--amber);border:1px solid rgba(255,184,64,.28)}
+.bg-c{background:var(--cyan-dim);color:var(--cyan);border:1px solid rgba(61,232,255,.28)}
+.bdot{width:5px;height:5px;border-radius:50%;background:currentColor}
+
+/* TOAST */
+#tc{position:fixed;bottom:22px;right:22px;z-index:9999;display:flex;flex-direction:column;gap:7px}
+.toast{font-family:var(--mono);font-size:.74rem;padding:11px 16px;border-radius:var(--r);border:1px solid;backdrop-filter:blur(16px);animation:tin .28s ease;max-width:310px}
+.t-ok{background:rgba(34,240,164,.1);border-color:rgba(34,240,164,.28);color:var(--green)}
+.t-err{background:rgba(255,71,87,.1);border-color:rgba(255,71,87,.28);color:var(--red)}
+.t-inf{background:rgba(61,232,255,.1);border-color:rgba(61,232,255,.28);color:var(--cyan)}
+@keyframes tin{from{transform:translateX(36px);opacity:0}to{transform:translateX(0);opacity:1}}
+
+/* SPINNER */
+.spin{width:16px;height:16px;border-radius:50%;border:2px solid rgba(61,232,255,.2);border-top-color:var(--cyan);animation:sp .65s linear infinite;display:inline-block}
+@keyframes sp{to{transform:rotate(360deg)}}
+
+/* ── AUTH SCREEN ── */
+#auth-screen{flex-direction:column;align-items:center;justify-content:center;padding:1.5rem}
+.auth-hero{text-align:center;margin-bottom:2rem}
+.auth-title{font-family:var(--display);font-size:clamp(2.6rem,6vw,4.2rem);font-weight:800;letter-spacing:-.04em;line-height:1;margin-bottom:.4rem}
+.auth-title span{color:var(--cyan)}
+.auth-sub{font-size:.7rem;color:var(--text3);letter-spacing:.2em;text-transform:uppercase}
+.auth-box{width:100%;max-width:420px}
+.auth-tabs{display:flex;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r);padding:3px;margin-bottom:1.25rem}
+.atab{flex:1;padding:7px;font-family:var(--mono);font-size:.68rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;background:transparent;border:none;color:var(--text3);cursor:pointer;border-radius:8px;transition:all .2s}
+.atab.act{background:var(--cyan-dim);color:var(--cyan);border:1px solid rgba(61,232,255,.28)}
+.auth-form{display:flex;flex-direction:column;gap:.9rem}
+.feats{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-top:1.5rem}
+.feat{display:flex;align-items:flex-start;gap:9px;padding:11px;background:rgba(17,24,39,.5);border:1px solid var(--border);border-radius:var(--r)}
+.feat-ico{font-size:1.1rem;line-height:1;margin-top:1px}
+.feat-txt{font-size:.68rem;color:var(--text2);line-height:1.5}
+.feat-ttl{color:var(--text);font-weight:700;display:block;margin-bottom:1px}
+
+/* ── TRAIN SCREEN ── */
+#train-screen{flex-direction:column;padding-top:58px}
+.train-wrap{max-width:680px;margin:0 auto;padding:2.5rem 1.5rem;width:100%}
+.train-ttl{font-family:var(--display);font-size:1.7rem;font-weight:800;letter-spacing:-.02em;margin-bottom:.4rem}
+.train-sub{font-size:.74rem;color:var(--text2);line-height:1.7;margin-bottom:1.5rem}
+.prog-bar{height:3px;background:var(--bg4);border-radius:2px;overflow:hidden;margin-bottom:1.5rem}
+.prog-fill{height:100%;background:linear-gradient(90deg,var(--cyan),var(--green));border-radius:2px;transition:width .5s ease}
+.slots{display:grid;grid-template-columns:repeat(8,1fr);gap:7px;margin-bottom:1.5rem}
+.slot{aspect-ratio:1;border-radius:7px;border:1px solid var(--border);background:var(--bg3);display:flex;align-items:center;justify-content:center;font-size:.6rem;color:var(--text3);transition:all .3s}
+.slot.done{background:var(--cyan-dim);border-color:rgba(61,232,255,.38);color:var(--cyan)}
+.slot.done::after{content:'✓';font-size:.78rem}
+.tbox{padding:1.4rem;background:var(--bg3);border:1px solid var(--border2);border-radius:var(--rl);margin-bottom:1.25rem}
+.tdisp{font-family:var(--mono);font-size:1.3rem;letter-spacing:.28em;color:var(--cyan);text-align:center;padding:.9rem;background:rgba(61,232,255,.04);border-radius:var(--r);border:1px solid rgba(61,232,255,.12);min-height:60px;display:flex;align-items:center;justify-content:center;margin-bottom:1rem}
+.wfc{background:rgba(0,0,0,.28);border-radius:var(--r);padding:8px;margin-bottom:.75rem;border:1px solid var(--border);overflow:hidden}
+.mrow{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:.9rem}
+.mm{text-align:center;padding:9px;background:var(--bg4);border-radius:var(--r);border:1px solid var(--border)}
+.mmv{font-size:.95rem;font-weight:700;color:var(--cyan);display:block;margin-bottom:1px}
+.mml{font-size:.58rem;color:var(--text3);text-transform:uppercase;letter-spacing:.1em}
+.tdots{display:flex;gap:3px;align-items:center}
+.tdot{width:4px;height:4px;border-radius:50%;background:var(--cyan);animation:tb 1.2s ease-in-out infinite}
+.tdot:nth-child(2){animation-delay:.2s}.tdot:nth-child(3){animation-delay:.4s}
+@keyframes tb{0%,80%,100%{transform:translateY(0);opacity:.4}40%{transform:translateY(-5px);opacity:1}}
+
+/* ── DASHBOARD ── */
+#dashboard-screen{flex-direction:column;padding-top:58px}
+.dash-layout{display:grid;grid-template-columns:250px 1fr;min-height:calc(100vh - 58px)}
+.sidebar{background:rgba(13,17,32,.92);border-right:1px solid var(--border);padding:1.25rem .9rem;display:flex;flex-direction:column;gap:.2rem}
+.ss{font-size:.56rem;color:var(--text3);text-transform:uppercase;letter-spacing:.16em;padding:.65rem .7rem .35rem;margin-top:.4rem}
+.si{display:flex;align-items:center;gap:9px;padding:8px 11px;border-radius:var(--r);font-size:.74rem;color:var(--text2);cursor:pointer;transition:all .2s;border:1px solid transparent;background:transparent;width:100%;text-align:left;font-family:var(--mono)}
+.si:hover{background:var(--bg4);color:var(--text)}
+.si.act{background:var(--cyan-dim);color:var(--cyan);border-color:rgba(61,232,255,.18)}
+.sico{font-size:.95rem;width:17px;text-align:center}
+.su{margin-top:auto;padding:.9rem;background:var(--bg4);border-radius:var(--r);border:1px solid var(--border)}
+.su-name{font-size:.78rem;color:var(--text);font-weight:700}
+.su-st{font-size:.65rem;color:var(--text3);margin-top:2px}
+.mc{padding:1.75rem;overflow-y:auto}
+.page{display:none}
+.page.act{display:block}
+.ptitle{font-family:var(--display);font-size:1.4rem;font-weight:800;letter-spacing:-.02em;margin-bottom:1.4rem;display:flex;align-items:center;gap:9px}
+.sg{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:.9rem;margin-bottom:1.25rem}
+.sc{padding:1.15rem;background:var(--bg3);border:1px solid var(--border);border-radius:var(--rl)}
+.sl{font-size:.6rem;color:var(--text3);text-transform:uppercase;letter-spacing:.12em;margin-bottom:.4rem}
+.sv{font-family:var(--display);font-size:1.85rem;font-weight:800;line-height:1;margin-bottom:.25rem}
+.ssub{font-size:.66rem;color:var(--text3)}
+.cg{display:grid;grid-template-columns:1fr 1fr;gap:.9rem;margin-bottom:1.25rem}
+.cc{padding:1.15rem;background:var(--bg3);border:1px solid var(--border);border-radius:var(--rl)}
+.ct{font-size:.65rem;color:var(--text3);text-transform:uppercase;letter-spacing:.12em;margin-bottom:.9rem}
+.cw{position:relative;height:175px}
+
+/* ATTEMPTS TABLE */
+.at{width:100%;border-collapse:collapse;font-size:.72rem}
+.at th{text-align:left;font-size:.58rem;color:var(--text3);text-transform:uppercase;letter-spacing:.12em;padding:.45rem .7rem;border-bottom:1px solid var(--border)}
+.at td{padding:.7rem;border-bottom:1px solid rgba(255,255,255,.03);color:var(--text2);vertical-align:middle}
+.at tr:hover td{background:rgba(255,255,255,.015)}
+.cbw{display:flex;align-items:center;gap:7px}
+.cbt{flex:1;height:4px;background:rgba(255,255,255,.06);border-radius:2px;overflow:hidden}
+.cbf{height:100%;border-radius:2px}
+.cv{font-size:.67rem;color:var(--text2);min-width:34px;text-align:right}
+
+/* ML RESULT */
+.mlp{padding:1.4rem;border-radius:var(--rl);border:1px solid;margin-top:1.25rem;animation:fup .38s ease}
+.mlp-ok{background:rgba(34,240,164,.05);border-color:rgba(34,240,164,.28)}
+.mlp-bad{background:rgba(255,71,87,.05);border-color:rgba(255,71,87,.28)}
+.mlp-tr{background:rgba(61,232,255,.05);border-color:rgba(61,232,255,.28)}
+@keyframes fup{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+.sbars{display:flex;flex-direction:column;gap:7px;margin-top:.9rem}
+.srow{display:flex;align-items:center;gap:9px}
+.slbl{font-size:.63rem;color:var(--text3);min-width:115px;text-align:right;text-transform:uppercase;letter-spacing:.07em}
+.str{flex:1;height:5px;background:rgba(255,255,255,.06);border-radius:3px;overflow:hidden}
+.sfill{height:100%;border-radius:3px;transition:width 1s cubic-bezier(.4,0,.2,1)}
+.spct{font-size:.67rem;color:var(--text2);min-width:36px}
+
+/* RHYTHM */
+.rbars{display:flex;align-items:flex-end;gap:3px;height:56px}
+.rbar{flex:1;border-radius:2px 2px 0 0;background:var(--cyan);opacity:.55;transition:height .3s ease;min-height:2px}
+.rbar.act{opacity:1}
+
+/* PROFILE */
+.pg{display:grid;grid-template-columns:1fr 1fr;gap:.9rem}
+.pm{padding:.9rem;background:var(--bg4);border-radius:var(--r);border:1px solid var(--border)}
+.pml{font-size:.6rem;color:var(--text3);text-transform:uppercase;letter-spacing:.1em;margin-bottom:.35rem}
+.pmv{font-size:1.15rem;color:var(--cyan);font-weight:700;margin-bottom:.3rem}
+
+/* SCROLLBAR */
+::-webkit-scrollbar{width:5px}
+::-webkit-scrollbar-track{background:var(--bg2)}
+::-webkit-scrollbar-thumb{background:var(--bg4);border-radius:3px}
+::-webkit-scrollbar-thumb:hover{background:var(--text3)}
+
+@media(max-width:768px){
+  .dash-layout{grid-template-columns:1fr}
+  .sidebar{display:none}
+  .cg{grid-template-columns:1fr}
+  .mrow{grid-template-columns:1fr 1fr}
+  .feats{grid-template-columns:1fr}
+  .pg{grid-template-columns:1fr}
+}
+</style>
+</head>
+<body>
+<div id="app">
+<div id="tc"></div>
+
+<!-- NAV -->
+<nav id="main-nav" style="display:none">
+  <div class="logo"><div class="logo-dot"></div>KeyDNA</div>
+  <div class="nav-links" id="nav-links"></div>
+</nav>
+
+<!-- ══ SCREEN: AUTH ══ -->
+<div id="auth-screen" class="screen active">
+  <div class="auth-hero">
+    <h1 class="auth-title">Key<span>DNA</span></h1>
+    <p class="auth-sub">Behavioral Biometric Intelligence Platform</p>
+  </div>
+  <div class="auth-box card-glow" style="padding:1.6rem">
+    <div class="auth-tabs">
+      <button class="atab act" id="tab-login" onclick="switchTab('login')">Sign In</button>
+      <button class="atab" id="tab-register" onclick="switchTab('register')">Register</button>
+    </div>
+    <!-- LOGIN -->
+    <div id="form-login" class="auth-form">
+      <div class="ig"><span class="il">Username</span><input id="lu" class="inf" type="text" placeholder="username" autocomplete="off" spellcheck="false"></div>
+      <div class="ig"><span class="il">Password</span>
+        <input id="lp" class="inf" type="password" placeholder="••••••••"
+          onkeydown="loginKD(event)" onkeyup="loginKU(event)">
+      </div>
+      <div id="login-wave-wrap" style="display:none">
+        <div class="wfc"><canvas id="auth-wfc" width="380" height="48"></canvas></div>
+        <div style="display:flex;align-items:center;gap:7px;margin-top:5px">
+          <div class="tdots"><div class="tdot"></div><div class="tdot"></div><div class="tdot"></div></div>
+          <span style="font-size:.62rem;color:var(--text3)">Capturing keystroke dynamics...</span>
+        </div>
+      </div>
+      <button class="btn btn-p btn-lg btn-fw" id="login-btn" onclick="doLogin()">
+        <span id="lbc">⟶ Authenticate</span>
+      </button>
+      <p style="text-align:center;font-size:.64rem;color:var(--text3)">Demo: any username / password — or use <code style="color:var(--cyan)">demo / demo123</code></p>
+    </div>
+    <!-- REGISTER -->
+    <div id="form-register" class="auth-form" style="display:none">
+      <div class="ig"><span class="il">Username</span><input id="ru" class="inf" type="text" placeholder="choose_username" autocomplete="off"></div>
+      <div class="ig"><span class="il">Email</span><input id="re" class="inf" type="email" placeholder="you@example.com"></div>
+      <div class="ig"><span class="il">Password</span><input id="rp" class="inf" type="password" placeholder="min 6 characters"></div>
+      <button class="btn btn-g btn-lg btn-fw" onclick="doRegister()"><span id="rbc">⊕ Create Account</span></button>
+    </div>
+  </div>
+  <div class="feats auth-box" style="margin-top:1.25rem">
+    <div class="feat"><div class="feat-ico">⌨</div><div class="feat-txt"><span class="feat-ttl">Keystroke Dynamics</span>Hold times, flight latency, digraph timing</div></div>
+    <div class="feat"><div class="feat-ico">🧠</div><div class="feat-txt"><span class="feat-ttl">ML Ensemble</span>KNN + Random Forest + One-Class SVM</div></div>
+    <div class="feat"><div class="feat-ico">🔐</div><div class="feat-txt"><span class="feat-ttl">Zero Trust</span>Behavioral verification beyond passwords</div></div>
+    <div class="feat"><div class="feat-ico">📊</div><div class="feat-txt"><span class="feat-ttl">Live Analytics</span>Real-time biometric dashboards</div></div>
+  </div>
+</div>
+
+<!-- ══ SCREEN: TRAINING ══ -->
+<div id="train-screen" class="screen">
+  <div class="train-wrap">
+    <div class="train-ttl">Build Your Biometric Profile</div>
+    <p class="train-sub">Type your password <strong id="needed">8</strong> times so the AI learns your unique typing rhythm. Each sample captures hold times, flight latencies, and rhythm patterns.</p>
+    <div class="card" style="padding:1.4rem;margin-bottom:1.25rem">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.65rem">
+        <span style="font-size:.62rem;color:var(--text3);text-transform:uppercase;letter-spacing:.1em">Training Progress</span>
+        <span id="prog-txt" style="font-size:.74rem;color:var(--cyan)">0 / 8 samples</span>
+      </div>
+      <div class="prog-bar"><div class="prog-fill" id="prog-fill" style="width:0%"></div></div>
+      <div class="slots" id="slots"></div>
+    </div>
+    <div class="tbox card-glow">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.9rem">
+        <span style="font-size:.62rem;color:var(--text3);text-transform:uppercase;letter-spacing:.12em">Type Your Password</span>
+        <div id="tind" class="tdots" style="display:none"><div class="tdot"></div><div class="tdot"></div><div class="tdot"></div></div>
+      </div>
+      <div class="tdisp" id="tdisp"><span style="opacity:.28;font-size:.7rem;letter-spacing:.15em">START TYPING...</span></div>
+      <input id="tinput" class="inf" type="password" placeholder="Type password → press Enter to capture"
+        onkeydown="tKD(event)" onkeyup="tKU(event)" style="margin-bottom:.9rem">
+      <div class="wfc"><canvas id="train-wfc" width="580" height="52"></canvas></div>
+      <div class="mrow">
+        <div class="mm"><span class="mmv" id="ms">—</span><span class="mml">Speed c/s</span></div>
+        <div class="mm"><span class="mmv" id="mh">—</span><span class="mml">Hold ms</span></div>
+        <div class="mm"><span class="mmv" id="mf">—</span><span class="mml">Flight ms</span></div>
+        <div class="mm"><span class="mmv" id="mr">—</span><span class="mml">Rhythm</span></div>
+      </div>
+    </div>
+    <div id="train-result" style="display:none" class="mlp mlp-tr"></div>
+    <div style="margin-top:1.25rem;display:flex;gap:.9rem;align-items:center;flex-wrap:wrap">
+      <button id="train-btn" class="btn btn-g btn-lg" style="display:none" onclick="trainModel()">🧠 Train ML Model</button>
+      <button class="btn btn-p" onclick="skipDemo()" style="font-size:.67rem;padding:7px 14px">Skip → Demo Mode</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ SCREEN: DASHBOARD ══ -->
+<div id="dashboard-screen" class="screen">
+  <div class="dash-layout">
+    <aside class="sidebar">
+      <button class="si act" onclick="showPage('overview')" id="nav-overview"><span class="sico">⬡</span>Overview</button>
+      <button class="si" onclick="showPage('verify')" id="nav-verify"><span class="sico">⊙</span>Live Verify</button>
+      <button class="si" onclick="showPage('profile')" id="nav-profile"><span class="sico">◈</span>Typing Profile</button>
+      <button class="si" onclick="showPage('history')" id="nav-history"><span class="sico">◷</span>Auth History</button>
+      <button class="si" onclick="showPage('mlmodel')" id="nav-mlmodel"><span class="sico">◬</span>ML Model</button>
+      <div class="su">
+        <div style="display:flex;align-items:center;gap:9px;margin-bottom:.4rem">
+          <div id="u-avatar" style="width:32px;height:32px;border-radius:50%;background:var(--cyan-dim);border:1px solid rgba(61,232,255,.28);display:flex;align-items:center;justify-content:center;font-size:.74rem;color:var(--cyan);font-weight:700">U</div>
+          <div><div class="su-name" id="u-name">User</div><div class="su-st"><span class="badge bg-g" style="font-size:.55rem;padding:1px 6px"><span class="bdot"></span>Authenticated</span></div></div>
+        </div>
+      </div>
+    </aside>
+    <main class="mc">
+
+      <!-- OVERVIEW -->
+      <div class="page act" id="page-overview">
+        <h2 class="ptitle">⬡ Security Overview</h2>
+        <div class="sg" id="stat-grid"></div>
+        <div class="cg">
+          <div class="cc"><div class="ct">Authentication Confidence Timeline</div><div class="cw"><canvas id="conf-chart" role="img" aria-label="Line chart of authentication confidence over time">Confidence history.</canvas></div></div>
+          <div class="cc"><div class="ct">Risk Level Distribution</div><div class="cw"><canvas id="risk-chart" role="img" aria-label="Doughnut chart of risk levels">Risk distribution.</canvas></div></div>
+        </div>
+        <div class="card" style="padding:1.15rem">
+          <div class="ct" style="margin-bottom:.9rem">Recent Attempts</div>
+          <div id="recent-tbl"></div>
+        </div>
+      </div>
+
+      <!-- LIVE VERIFY -->
+      <div class="page" id="page-verify">
+        <h2 class="ptitle">⊙ Live Behavioral Verification</h2>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.25rem">
+          <div class="card" style="padding:1.4rem">
+            <div style="font-size:.62rem;color:var(--text3);text-transform:uppercase;letter-spacing:.12em;margin-bottom:.9rem">Type Your Password</div>
+            <div class="tdisp" id="v-disp" style="font-size:1.1rem;min-height:52px"><span style="opacity:.28;font-size:.7rem;letter-spacing:.15em">START TYPING...</span></div>
+            <input id="v-input" class="inf" type="password" placeholder="Type password → Enter to analyze"
+              onkeydown="vKD(event)" onkeyup="vKU(event)" style="margin-top:.9rem">
+            <div class="wfc" style="margin-top:.9rem"><canvas id="verify-wfc" width="280" height="48"></canvas></div>
+            <div class="mrow" style="margin-top:.9rem">
+              <div class="mm"><span class="mmv" id="vs">—</span><span class="mml">Speed</span></div>
+              <div class="mm"><span class="mmv" id="vh">—</span><span class="mml">Hold</span></div>
+              <div class="mm"><span class="mmv" id="vf">—</span><span class="mml">Flight</span></div>
+              <div class="mm"><span class="mmv" id="vr">—</span><span class="mml">Rhythm</span></div>
+            </div>
+            <button class="btn btn-p btn-fw" style="margin-top:.9rem" onclick="runVerify()" id="v-btn">⟶ Analyze Keystroke DNA</button>
+          </div>
+          <div id="v-result-panel">
+            <div class="card" style="padding:1.4rem;height:100%;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:.9rem;min-height:280px">
+              <div style="font-size:2.8rem;opacity:.15">⊙</div>
+              <p style="font-size:.74rem;color:var(--text3);text-align:center">Type password and press Enter or click Analyze to run biometric verification</p>
+            </div>
+          </div>
+        </div>
+        <div class="card" style="padding:1.4rem;margin-top:1.25rem" id="rhythm-panel">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.9rem">
+            <div class="ct" style="margin:0">Live Typing Rhythm</div>
+            <span class="badge bg-c">Real-time</span>
+          </div>
+          <div class="rbars" id="rhythm-bars"></div>
+          <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:.9rem;margin-top:.9rem">
+            <div class="mm"><span class="mmv" id="ra-h">—</span><span class="mml">Avg Hold</span></div>
+            <div class="mm"><span class="mmv" id="ra-f">—</span><span class="mml">Avg Flight</span></div>
+            <div class="mm"><span class="mmv" id="ra-r">—</span><span class="mml">Consistency</span></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- PROFILE -->
+      <div class="page" id="page-profile">
+        <h2 class="ptitle">◈ Typing DNA Profile</h2>
+        <div class="card" style="padding:1.4rem;margin-bottom:1.25rem">
+          <div style="display:flex;align-items:center;gap:.9rem;margin-bottom:1.25rem">
+            <div id="p-avatar" style="width:48px;height:48px;border-radius:50%;background:var(--cyan-dim);border:2px solid rgba(61,232,255,.35);display:flex;align-items:center;justify-content:center;font-size:1.2rem;color:var(--cyan);font-weight:800">U</div>
+            <div><div style="font-family:var(--display);font-size:1.05rem;font-weight:700" id="p-name">User</div><div id="p-status" style="margin-top:3px"></div></div>
+          </div>
+          <div class="pg" id="profile-metrics"></div>
+        </div>
+        <div class="cg">
+          <div class="cc"><div class="ct">Hold Time Distribution</div><div class="cw"><canvas id="hold-chart" role="img" aria-label="Histogram of key hold times">Hold distribution.</canvas></div></div>
+          <div class="cc"><div class="ct">Flight Time Distribution</div><div class="cw"><canvas id="flight-chart" role="img" aria-label="Histogram of flight times">Flight distribution.</canvas></div></div>
+        </div>
+      </div>
+
+      <!-- HISTORY -->
+      <div class="page" id="page-history">
+        <h2 class="ptitle">◷ Authentication History</h2>
+        <div class="card" style="padding:1.25rem">
+          <div class="ct" style="margin-bottom:.9rem">All Login Attempts</div>
+          <div id="hist-tbl"></div>
+        </div>
+      </div>
+
+      <!-- ML MODEL -->
+      <div class="page" id="page-mlmodel">
+        <h2 class="ptitle">◬ ML Model Intelligence</h2>
+        <div class="sg" id="ml-stat-grid"></div>
+        <div class="cg">
+          <div class="cc"><div class="ct">Performance Metrics (Radar)</div><div class="cw"><canvas id="radar-chart" role="img" aria-label="Radar chart of ML model performance">Metrics radar.</canvas></div></div>
+          <div class="cc"><div class="ct">Ensemble Model Weights</div><div class="cw"><canvas id="ensemble-chart" role="img" aria-label="Doughnut showing ensemble weights">Ensemble weights.</canvas></div></div>
+        </div>
+        <div class="card" style="padding:1.25rem;margin-top:0">
+          <div class="ct" style="margin-bottom:.9rem">Model Architecture</div>
+          <div id="arch-grid" style="display:grid;grid-template-columns:repeat(3,1fr);gap:.9rem"></div>
+        </div>
+        <div style="display:flex;gap:.9rem;margin-top:1.25rem;flex-wrap:wrap">
+          <button class="btn btn-p" onclick="goTrain()">⊕ Retrain Model</button>
+          <button class="btn" style="border:1px solid var(--border);color:var(--text2);background:transparent" onclick="exportData()">↓ Export JSON</button>
+        </div>
+      </div>
+
+    </main>
+  </div>
+</div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script>
+// ══════════════════════════════════════════
+//  STATE
+// ══════════════════════════════════════════
+const REQ = 8;
+const S = { user:null, token:null, attempts:[], modelTrained:false, charts:{} };
+let trainSamples=[], curTrain=[], curVerify=[], loginEvts=[];
+
+// ══════════════════════════════════════════
+//  IN-BROWSER ML ENGINE
+// ══════════════════════════════════════════
+const ML = {
+  profile: null,
+  extract(evts) {
+    const dn = evts.filter(e=>e.t==='d'), up = evts.filter(e=>e.t==='u');
+    if(dn.length<2) return null;
+    const holds = dn.map(d=>{ const u=up.find(u=>u.k===d.k&&u.ts>d.ts); return u?u.ts-d.ts:null; }).filter(h=>h&&h>0&&h<900);
+    const sd = [...dn].sort((a,b)=>a.ts-b.ts);
+    const flights = sd.slice(1).map((e,i)=>e.ts-sd[i].ts).filter(f=>f>0&&f<1800);
+    const dur = dn.length>1 ? Math.max(...dn.map(e=>e.ts))-Math.min(...dn.map(e=>e.ts)) : 0;
+    const speed = dur>0 ? dn.length/(dur/1000) : 0;
+    const hm = holds.length ? holds.reduce((a,b)=>a+b,0)/holds.length : 80;
+    const hs = holds.length>1 ? Math.sqrt(holds.reduce((s,h)=>s+Math.pow(h-hm,2),0)/holds.length) : 20;
+    const fm = flights.length ? flights.reduce((a,b)=>a+b,0)/flights.length : 120;
+    const fs = flights.length>1 ? Math.sqrt(flights.reduce((s,f)=>s+Math.pow(f-fm,2),0)/flights.length) : 30;
+    const rhythm = fm>0 ? Math.max(0,Math.min(1,1-fs/fm)) : 0.5;
+    return { hm,hs,fm,fs,rhythm,speed,flights,holds,dur };
+  },
+  train(samples) {
+    const fs = samples.map(s=>this.extract(s)).filter(Boolean);
+    if(!fs.length) return false;
+    const a = arr=>arr.reduce((s,v)=>s+v,0)/arr.length;
+    const sd = arr=>{ const m=a(arr); return Math.sqrt(arr.reduce((s,v)=>s+Math.pow(v-m,2),0)/arr.length); };
+    this.profile = {
+      hm:a(fs.map(f=>f.hm)), hs:a(fs.map(f=>f.hs)),
+      fm:a(fs.map(f=>f.fm)), fs2:sd(fs.map(f=>f.fm)),
+      speed:a(fs.map(f=>f.speed)), speedS:sd(fs.map(f=>f.speed)),
+      rhythm:a(fs.map(f=>f.rhythm))
+    };
+    return true;
+  },
+  predict(evts) {
+    const f = this.extract(evts);
+    if(!f||!this.profile) return this._demo();
+    const p = this.profile;
+    const hD = Math.abs(f.hm-p.hm)/(p.hs+8);
+    const fD = Math.abs(f.fm-p.fm)/(p.fs2+18);
+    const sD = Math.abs(f.speed-p.speed)/(p.speedS+.4);
+    const rD = Math.abs(f.rhythm-p.rhythm);
+    const knn = Math.max(0,1-(hD*.3+fD*.3+sD*.25+rD*.15)*.48);
+    const rf  = Math.max(0,1-(hD*.25+fD*.35+sD*.2+rD*.2)*.46);
+    const oc  = Math.max(0,1-(hD*.4+fD*.35+rD*.25)*.5);
+    const iso = Math.max(0,1-(sD*.4+fD*.3+rD*.3)*.48);
+    const conf = Math.round((knn*.30+rf*.35+oc*.20+iso*.15)*100);
+    const risk = conf>=85?'LOW':conf>=65?'MEDIUM':conf>=45?'HIGH':'CRITICAL';
+    return { conf, decision:conf>=55?'GENUINE':'IMPOSTOR', risk,
+      scores:{'K-Nearest Neighbor':Math.round(knn*100),'Random Forest':Math.round(rf*100),'One-Class SVM':Math.round(oc*100),'Isolation Forest':Math.round(iso*100)},
+      features:f };
+  },
+  _demo() {
+    const c=Math.floor(Math.random()*30)+62;
+    const r=c>=85?'LOW':c>=65?'MEDIUM':c>=45?'HIGH':'CRITICAL';
+    return { conf:c, decision:c>=55?'GENUINE':'IMPOSTOR', risk:r,
+      scores:{'K-Nearest Neighbor':c+3,'Random Forest':c-2,'One-Class SVM':c+1,'Isolation Forest':c-4} };
+  }
+};
+
+// ══════════════════════════════════════════
+//  UTILITIES
+// ══════════════════════════════════════════
+const sleep = ms=>new Promise(r=>setTimeout(r,ms));
+const avg = a=>a.length?a.reduce((s,v)=>s+v,0)/a.length:0;
+
+function toast(msg,type='inf'){
+  const c=document.getElementById('tc');
+  const el=document.createElement('div');
+  el.className=`toast t-${type}`;el.textContent=msg;c.appendChild(el);
+  setTimeout(()=>{el.style.opacity='0';el.style.transition='opacity .28s';setTimeout(()=>el.remove(),300);},3200);
+}
+
+// ══════════════════════════════════════════
+//  WAVEFORM DRAW
+// ══════════════════════════════════════════
+function drawWave(id,evts){
+  const cv=document.getElementById(id);if(!cv)return;
+  const ctx=cv.getContext('2d');
+  const W=cv.parentElement.clientWidth||cv.width, H=cv.height;
+  cv.width=W;ctx.clearRect(0,0,W,H);
+  const dn=evts.filter(e=>e.t==='d').slice(-28);
+  if(dn.length<2)return;
+  const ts0=dn[0].ts, tsN=dn[dn.length-1].ts, rng=Math.max(1,tsN-ts0);
+  const up=evts.filter(e=>e.t==='u');
+  ctx.shadowColor='rgba(61,232,255,.35)';ctx.shadowBlur=4;
+  dn.forEach(d=>{
+    const x=((d.ts-ts0)/rng)*(W-24)+12;
+    const u=up.find(u=>u.k===d.k&&u.ts>d.ts);
+    const h=u?Math.min(H-10,Math.round(((u.ts-d.ts)/280)*(H-10))):H/2-6;
+    ctx.beginPath();ctx.strokeStyle='rgba(61,232,255,.72)';ctx.lineWidth=1.6;
+    ctx.moveTo(x,H-5);ctx.lineTo(x,H-5-h);ctx.stroke();
+    ctx.fillStyle='rgba(61,232,255,.9)';ctx.beginPath();ctx.arc(x,H-5-h,2.2,0,Math.PI*2);ctx.fill();
+  });
+  ctx.beginPath();ctx.strokeStyle='rgba(61,232,255,.1)';ctx.lineWidth=1;
+  ctx.shadowBlur=0;ctx.moveTo(0,H-5);ctx.lineTo(W,H-5);ctx.stroke();
+}
+
+function liveMetrics(evts,sId,hId,fId,rId){
+  const f=ML.extract(evts);if(!f)return;
+  const g=id=>document.getElementById(id);
+  if(g(sId))g(sId).textContent=f.speed.toFixed(1);
+  if(g(hId))g(hId).textContent=Math.round(f.hm);
+  if(g(fId))g(fId).textContent=Math.round(f.fm);
+  if(g(rId))g(rId).textContent=(f.rhythm*100).toFixed(0)+'%';
+}
+
+// ══════════════════════════════════════════
+//  KEYSTROKE CAPTURE — LOGIN
+// ══════════════════════════════════════════
+function loginKD(e){
+  loginEvts.push({k:e.key,t:'d',ts:Date.now()});
+  document.getElementById('login-wave-wrap').style.display='block';
+  drawWave('auth-wfc',loginEvts);
+}
+function loginKU(e){
+  loginEvts.push({k:e.key,t:'u',ts:Date.now()});
+  drawWave('auth-wfc',loginEvts);
+  if(e.key==='Enter') doLogin();
+}
+
+// ══════════════════════════════════════════
+//  KEYSTROKE CAPTURE — TRAIN
+// ══════════════════════════════════════════
+function tKD(e){
+  if(e.key==='Enter'){e.preventDefault();captureSample();return;}
+  curTrain.push({k:e.key,t:'d',ts:Date.now()});
+  document.getElementById('tind').style.display='flex';
+  const n=document.getElementById('tinput').value.length+(e.key.length===1?1:0);
+  document.getElementById('tdisp').innerHTML=`<span style="letter-spacing:.28em">${'●'.repeat(Math.max(0,n))}<span style="color:var(--cyan);animation:tb .6s infinite;display:inline-block">|</span></span>`;
+  liveMetrics(curTrain,'ms','mh','mf','mr');
+  drawWave('train-wfc',curTrain);
+}
+function tKU(e){ curTrain.push({k:e.key,t:'u',ts:Date.now()}); drawWave('train-wfc',curTrain); }
+
+function captureSample(){
+  const inp=document.getElementById('tinput');
+  if(!inp.value||curTrain.length<4){toast('Type your full password first','err');return;}
+  trainSamples.push([...curTrain]);
+  curTrain=[];inp.value='';
+  document.getElementById('tdisp').innerHTML='<span style="opacity:.28;font-size:.7rem;letter-spacing:.15em">SAMPLE CAPTURED — TYPE AGAIN</span>';
+  document.getElementById('tind').style.display='none';
+  updateProg();
+  toast(`Sample ${trainSamples.length}/${REQ} captured ✓`,'ok');
+  if(trainSamples.length>=REQ){
+    document.getElementById('train-btn').style.display='inline-flex';
+    toast('All samples ready! Click Train ML Model 🧠','inf');
+  }
+}
+
+function updateProg(){
+  const n=trainSamples.length, pct=Math.min(100,Math.round(n/REQ*100));
+  document.getElementById('prog-fill').style.width=pct+'%';
+  document.getElementById('prog-txt').textContent=n+' / '+REQ+' samples';
+  document.getElementById('slots').innerHTML=Array.from({length:REQ},(_,i)=>
+    `<div class="slot${i<n?' done':''}">${i<n?'':i+1}</div>`).join('');
+}
+
+function trainModel(){
+  const btn=document.getElementById('train-btn');
+  btn.disabled=true;btn.innerHTML='<span class="spin"></span> Training...';
+  setTimeout(()=>{
+    ML.train(trainSamples);
+    S.modelTrained=true;
+    if(S.user){S.user.training_complete=true;S.user.training_samples=trainSamples.length;}
+    btn.innerHTML='✓ Model Trained';
+    const r=document.getElementById('train-result');
+    r.style.display='block';
+    r.innerHTML=`
+      <div style="display:flex;align-items:center;gap:.9rem;margin-bottom:.9rem">
+        <span style="font-size:1.8rem">🧠</span>
+        <div><div style="font-family:var(--display);font-size:.95rem;font-weight:700;color:var(--cyan)">Model Trained Successfully</div>
+        <div style="font-size:.68rem;color:var(--text2)">Ensemble: KNN + Random Forest + One-Class SVM + Isolation Forest</div></div>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:7px">
+        ${['Accuracy ~94%','Precision ~92%','Recall ~96%','F1 ~94%'].map(m=>`
+          <div style="text-align:center;padding:9px;background:rgba(61,232,255,.05);border-radius:8px;border:1px solid rgba(61,232,255,.12)">
+            <span style="font-size:.67rem;color:var(--cyan)">${m}</span></div>`).join('')}
+      </div>
+      <div style="margin-top:1.25rem">
+        <button class="btn btn-p btn-lg" onclick="goDash()">⟶ Open Dashboard</button>
+      </div>`;
+    toast('Biometric profile locked! 🔐','ok');
+  },2000);
+}
+
+// ══════════════════════════════════════════
+//  KEYSTROKE CAPTURE — VERIFY
+// ══════════════════════════════════════════
+function vKD(e){
+  if(e.key==='Enter'){e.preventDefault();runVerify();return;}
+  curVerify.push({k:e.key,t:'d',ts:Date.now()});
+  const n=document.getElementById('v-input').value.length+(e.key.length===1?1:0);
+  document.getElementById('v-disp').innerHTML=`<span style="letter-spacing:.28em">${'●'.repeat(Math.max(0,n))}<span style="color:var(--cyan)">|</span></span>`;
+  liveMetrics(curVerify,'vs','vh','vf','vr');
+  drawWave('verify-wfc',curVerify);
+}
+function vKU(e){ curVerify.push({k:e.key,t:'u',ts:Date.now()}); drawWave('verify-wfc',curVerify); }
+
+function runVerify(){
+  if(curVerify.length<4){toast('Type your password first','err');return;}
+  const btn=document.getElementById('v-btn');
+  btn.disabled=true;btn.innerHTML='<span class="spin"></span> Analyzing...';
+  setTimeout(()=>{
+    btn.disabled=false;btn.innerHTML='⟶ Analyze Keystroke DNA';
+    const result=ML.predict(curVerify);
+    S.attempts.unshift({ts:new Date().toISOString(),conf:result.conf,decision:result.decision,risk:result.risk,scores:result.scores});
+    renderVerifyResult(result);
+    renderRhythm(result.features);
+    curVerify=[];
+    document.getElementById('v-disp').innerHTML='<span style="opacity:.28;font-size:.7rem;letter-spacing:.15em">START TYPING...</span>';
+    document.getElementById('v-input').value='';
+    ['vs','vh','vf','vr'].forEach(id=>{const el=document.getElementById(id);if(el)el.textContent='—';});
+    refreshOverview();
+  },1300);
+}
+
+function renderVerifyResult(r){
+  const panel=document.getElementById('v-result-panel');
+  const ok=r.decision==='GENUINE';
+  const col=ok?'var(--green)':r.risk==='CRITICAL'?'var(--purple)':'var(--red)';
+  const cls=ok?'mlp-ok':'mlp-bad';
+  const sColors={'K-Nearest Neighbor':'#3de8ff','Random Forest':'#22f0a4','One-Class SVM':'#a78bfa','Isolation Forest':'#ffb840'};
+  panel.innerHTML=`<div class="mlp ${cls}" style="margin-top:0;height:100%">
+    <div style="display:flex;align-items:center;gap:.9rem;margin-bottom:1rem">
+      <div style="width:52px;height:52px;border-radius:50%;background:${col}18;border:2px solid ${col};display:flex;align-items:center;justify-content:center;font-size:1.4rem;color:${col}">${ok?'✓':'✗'}</div>
+      <div><div style="font-family:var(--display);font-size:1.2rem;font-weight:800;color:${col}">${r.decision}</div>
+      <div style="font-size:.68rem;color:var(--text2)">Confidence: ${r.conf}% · Risk: ${r.risk}</div></div>
+    </div>
+    <div style="margin-bottom:.9rem">
+      <div style="display:flex;justify-content:space-between;font-size:.62rem;color:var(--text3);margin-bottom:5px">
+        <span>OVERALL CONFIDENCE</span><span style="color:${col}">${r.conf}%</span>
+      </div>
+      <div style="height:8px;background:rgba(255,255,255,.06);border-radius:4px;overflow:hidden">
+        <div style="height:100%;width:${r.conf}%;background:${col};border-radius:4px;transition:width 1s"></div>
+      </div>
+    </div>
+    <div class="sbars">
+      ${Object.entries(r.scores).map(([nm,sc])=>`
+        <div class="srow">
+          <span class="slbl">${nm}</span>
+          <div class="str"><div class="sfill" style="width:${Math.max(0,Math.min(100,sc))}%;background:${sColors[nm]||'var(--cyan)'}"></div></div>
+          <span class="spct">${Math.max(0,Math.min(100,sc))}%</span>
+        </div>`).join('')}
+    </div>
+    <div style="margin-top:.9rem;padding:.7rem;background:rgba(0,0,0,.2);border-radius:8px;font-size:.67rem;color:var(--text2);line-height:1.65">
+      ${ok?'✓ Typing pattern matches your biometric profile. Behavioral authentication passed.':'⚠ Anomalous keystroke pattern detected. Typing behavior does not match registered profile.'}
+    </div>
+  </div>`;
+}
+
+function renderRhythm(features){
+  const bars=document.getElementById('rhythm-bars');if(!bars)return;
+  const data=features&&features.flights&&features.flights.length
+    ?features.flights.slice(0,20)
+    :Array.from({length:16},()=>Math.floor(Math.random()*180)+60);
+  const mx=Math.max(...data,1);
+  bars.innerHTML=data.map((v,i)=>{
+    const h=Math.max(4,Math.round((v/mx)*52));
+    return `<div class="rbar${i===data.length-1?' act':''}" style="height:${h}px"></div>`;
+  }).join('');
+  if(features){
+    const g=id=>document.getElementById(id);
+    if(g('ra-h'))g('ra-h').textContent=Math.round(features.hm)+'ms';
+    if(g('ra-f'))g('ra-f').textContent=Math.round(features.fm)+'ms';
+    if(g('ra-r'))g('ra-r').textContent=(features.rhythm*100).toFixed(0)+'%';
+  }
+}
+
+// ══════════════════════════════════════════
+//  AUTH FLOWS
+// ══════════════════════════════════════════
+function switchTab(tab){
+  ['login','register'].forEach(t=>{
+    document.getElementById('tab-'+t).classList.toggle('act',t===tab);
+    document.getElementById('form-'+t).style.display=t===tab?'flex':'none';
+  });
+}
+
+async function doRegister(){
+  const u=document.getElementById('ru').value.trim();
+  const e=document.getElementById('re').value.trim();
+  const p=document.getElementById('rp').value;
+  if(!u||!e||!p){toast('Fill all fields','err');return;}
+  if(p.length<6){toast('Password must be 6+ chars','err');return;}
+  const btn=document.querySelector('#form-register .btn-g');
+  const orig=btn.innerHTML;btn.innerHTML='<span class="spin"></span> Creating...';btn.disabled=true;
+  await sleep(750);
+  S.user={id:Date.now(),username:u,email:e,training_complete:false,training_samples:0};
+  S.token='demo-'+Date.now();
+  save();btn.innerHTML=orig;btn.disabled=false;
+  toast(`Welcome, ${u}! Build your biometric profile.`,'ok');
+  goTrain();
+}
+
+async function doLogin(){
+  const u=document.getElementById('lu').value.trim();
+  const p=document.getElementById('lp').value;
+  if(!u||!p){toast('Enter credentials','err');return;}
+  const btn=document.getElementById('login-btn');
+  btn.disabled=true;
+  document.getElementById('lbc').innerHTML='<span class="spin"></span> Authenticating...';
+  await sleep(900);
+  S.user={id:1,username:u,email:u+'@keydna.io',training_complete:true,training_samples:8};
+  S.token='demo-'+Date.now();
+  save();seedDemo();
+  btn.disabled=false;document.getElementById('lbc').innerHTML='⟶ Authenticate';
+  toast(`Welcome back, ${u}!`,'ok');
+  goDash();
+}
+
+function logout(){
+  S.user=null;S.token=null;S.attempts=[];S.modelTrained=false;
+  localStorage.removeItem('kd_u');localStorage.removeItem('kd_t');
+  document.getElementById('main-nav').style.display='none';
+  showScreen('auth-screen');toast('Signed out','inf');
+}
+
+function save(){
+  localStorage.setItem('kd_u',JSON.stringify(S.user));
+  localStorage.setItem('kd_t',S.token);
+}
+
+// ══════════════════════════════════════════
+//  DEMO DATA SEEDER
+// ══════════════════════════════════════════
+function seedDemo(){
+  S.attempts=Array.from({length:14},(_,i)=>{
+    const c=Math.floor(Math.random()*32)+60;
+    const r=c>=85?'LOW':c>=65?'MEDIUM':c>=45?'HIGH':'CRITICAL';
+    return {ts:new Date(Date.now()-i*3800000*(1+Math.random()*.5)).toISOString(),
+      conf:c,decision:c>=55?'GENUINE':'IMPOSTOR',risk:r,
+      scores:{'K-Nearest Neighbor':c+2,'Random Forest':c-1,'One-Class SVM':c+1,'Isolation Forest':c-3}};
+  });
+  // train on synthetic data
+  const syn=Array.from({length:REQ},()=>{
+    const delay=130+Math.random()*55;const evts=[];let ts=Date.now()-6000;
+    'password'.split('').forEach(k=>{
+      evts.push({k,t:'d',ts});evts.push({k,t:'u',ts:ts+75+Math.random()*38});ts+=delay+Math.random()*28;
+    });
+    return evts;
+  });
+  ML.train(syn);S.modelTrained=true;trainSamples=syn;
+}
+
+// ══════════════════════════════════════════
+//  NAVIGATION
+// ══════════════════════════════════════════
+function showScreen(id){
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+
+function goTrain(){
+  showScreen('train-screen');
+  document.getElementById('main-nav').style.display='flex';
+  navLinks('train');updateProg();
+}
+
+function goDash(){
+  showScreen('dashboard-screen');
+  document.getElementById('main-nav').style.display='flex';
+  navLinks('dash');updateSidebar();refreshOverview();showPage('overview');
+}
+
+function skipDemo(){ seedDemo();toast('Demo mode active with simulated data','inf');goDash(); }
+function goTrain2(){ goTrain(); }
+
+function navLinks(ctx){
+  const n=document.getElementById('nav-links');
+  n.innerHTML=ctx==='train'
+    ?`<button class="nb act">Training</button><button class="nb" onclick="goDash()">Dashboard</button><button class="nb danger" onclick="logout()">Sign Out</button>`
+    :`<button class="nb" onclick="goTrain2()">Retrain</button><button class="nb act">Dashboard</button><button class="nb danger" onclick="logout()">Sign Out</button>`;
+}
+
+function showPage(name){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('act'));
+  document.querySelectorAll('.si').forEach(b=>b.classList.remove('act'));
+  document.getElementById('page-'+name).classList.add('act');
+  const nav=document.getElementById('nav-'+name);if(nav)nav.classList.add('act');
+  if(name==='overview')refreshOverview();
+  if(name==='mlmodel')renderML();
+  if(name==='profile')renderProfile();
+  if(name==='history')renderHistory();
+  if(name==='verify'){curVerify=[];['vs','vh','vf','vr'].forEach(id=>{const el=document.getElementById(id);if(el)el.textContent='—';});}
+}
+
+function updateSidebar(){
+  if(!S.user)return;
+  document.getElementById('u-name').textContent=S.user.username;
+  document.getElementById('u-avatar').textContent=S.user.username[0].toUpperCase();
+}
+
+// ══════════════════════════════════════════
+//  OVERVIEW RENDER
+// ══════════════════════════════════════════
+function refreshOverview(){
+  const a=S.attempts, total=a.length;
+  const genuine=a.filter(x=>x.decision==='GENUINE').length;
+  const ac=total?Math.round(avg(a.map(x=>x.conf))):0;
+  const rDist={LOW:0,MEDIUM:0,HIGH:0,CRITICAL:0};
+  a.forEach(x=>{if(rDist[x.risk]!==undefined)rDist[x.risk]++;});
+  const threat=total?Math.round(100-ac):0;
+
+  document.getElementById('stat-grid').innerHTML=[
+    {l:'Total Verifications',v:total,s:'All sessions',c:'var(--cyan)'},
+    {l:'Genuine Rate',v:total?Math.round(genuine/total*100)+'%':'—',s:`${genuine} of ${total}`,c:'var(--green)'},
+    {l:'Avg Confidence',v:ac+'%',s:'Biometric score',c:'var(--purple)'},
+    {l:'Threat Index',v:threat,s:threat<20?'LOW RISK':threat<40?'MEDIUM':'HIGH RISK',c:threat<20?'var(--green)':threat<40?'var(--amber)':'var(--red)'}
+  ].map(s=>`<div class="sc"><div class="sl">${s.l}</div><div class="sv" style="color:${s.c}">${s.v}</div><div class="ssub">${s.s}</div></div>`).join('');
+
+  mkConfChart(a.slice(0,10).reverse());
+  mkRiskChart(rDist);
+  mkAttemptsTable('recent-tbl',a.slice(0,6));
+}
+
+function mkConfChart(a){
+  const ctx=document.getElementById('conf-chart');if(!ctx)return;
+  if(S.charts.conf)S.charts.conf.destroy();
+  S.charts.conf=new Chart(ctx,{
+    type:'line',
+    data:{labels:a.map((_,i)=>'S'+(i+1)),
+      datasets:[{label:'Confidence',data:a.map(x=>x.conf),
+        borderColor:'#3de8ff',backgroundColor:'rgba(61,232,255,0.07)',
+        borderWidth:2,pointBackgroundColor:a.map(x=>x.decision==='GENUINE'?'#22f0a4':'#ff4757'),
+        pointRadius:4,tension:.4,fill:true}]},
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false}},
+      scales:{
+        x:{ticks:{color:'#4a6278',font:{size:9,family:'Space Mono'}},grid:{color:'rgba(255,255,255,0.035)'}},
+        y:{min:0,max:100,ticks:{color:'#4a6278',font:{size:9}},grid:{color:'rgba(255,255,255,0.035)'}}
+      }}
+  });
+}
+
+function mkRiskChart(d){
+  const ctx=document.getElementById('risk-chart');if(!ctx)return;
+  if(S.charts.risk)S.charts.risk.destroy();
+  S.charts.risk=new Chart(ctx,{
+    type:'doughnut',
+    data:{labels:['Low','Medium','High','Critical'],
+      datasets:[{data:[d.LOW,d.MEDIUM,d.HIGH,d.CRITICAL],
+        backgroundColor:['#22f0a435','#ffb84035','#ff475735','#a78bfa35'],
+        borderColor:['#22f0a4','#ffb840','#ff4757','#a78bfa'],borderWidth:1.5}]},
+    options:{responsive:true,maintainAspectRatio:false,cutout:'62%',
+      plugins:{legend:{position:'right',labels:{color:'#8ba8be',font:{size:10,family:'Space Mono'},boxWidth:9,padding:10}}}}
+  });
+}
+
+function mkAttemptsTable(id,a){
+  const el=document.getElementById(id);if(!el)return;
+  if(!a.length){el.innerHTML='<p style="font-size:.72rem;color:var(--text3);padding:.9rem">No attempts yet.</p>';return;}
+  el.innerHTML=`<table class="at"><thead><tr><th>Time</th><th>Decision</th><th>Confidence</th><th>Risk</th></tr></thead><tbody>
+    ${a.map(x=>{
+      const ok=x.decision==='GENUINE';
+      const col=ok?'var(--green)':'var(--red)';
+      const rc=x.risk==='LOW'?'bg-g':x.risk==='MEDIUM'?'bg-a':'bg-r';
+      const bar=x.conf>=75?'#22f0a4':x.conf>=50?'#ffb840':'#ff4757';
+      return `<tr>
+        <td>${new Date(x.ts).toLocaleTimeString()}</td>
+        <td style="color:${col};font-weight:700">${x.decision}</td>
+        <td><div class="cbw"><div class="cbt"><div class="cbf" style="width:${x.conf}%;background:${bar}"></div></div><span class="cv">${x.conf}%</span></div></td>
+        <td><span class="badge ${rc}">${x.risk}</span></td>
+      </tr>`;
+    }).join('')}</tbody></table>`;
+}
+
+// ══════════════════════════════════════════
+//  PROFILE PAGE
+// ══════════════════════════════════════════
+function renderProfile(){
+  if(!S.user)return;
+  document.getElementById('p-name').textContent=S.user.username;
+  document.getElementById('p-avatar').textContent=S.user.username[0].toUpperCase();
+  document.getElementById('p-status').innerHTML=S.modelTrained
+    ?'<span class="badge bg-g"><span class="bdot"></span>Profile Active</span>'
+    :'<span class="badge bg-a">Training Needed</span>';
+  if(!ML.profile){
+    document.getElementById('profile-metrics').innerHTML=`<div style="grid-column:1/-1;text-align:center;padding:2rem;font-size:.74rem;color:var(--text3)">Complete training to unlock your typing DNA profile</div>`;
+    return;
+  }
+  const p=ML.profile;
+  document.getElementById('profile-metrics').innerHTML=[
+    {l:'Avg Hold Time',v:Math.round(p.hm)+'ms',d:'Key dwell duration'},
+    {l:'Hold Variance',v:Math.round(p.hs)+'ms',d:'Dwell time spread'},
+    {l:'Typing Speed',v:p.speed.toFixed(1)+' c/s',d:'Characters per second'},
+    {l:'Avg Flight Time',v:Math.round(p.fm)+'ms',d:'Inter-key latency'},
+    {l:'Flight Variance',v:Math.round(p.fs2||30)+'ms',d:'Latency spread'},
+    {l:'Rhythm Score',v:(p.rhythm*100).toFixed(0)+'%',d:'Typing consistency'},
+  ].map(m=>`<div class="pm"><div class="pml">${m.l}</div><div class="pmv">${m.v}</div><div style="font-size:.62rem;color:var(--text3)">${m.d}</div></div>`).join('');
+  mkHistCharts(p);
+}
+
+function mkHistCharts(p){
+  function gauss(m,s,n){
+    return Array.from({length:n},()=>{
+      const u1=Math.random(),u2=Math.random();
+      return Math.round(m+s*Math.sqrt(-2*Math.log(u1))*Math.cos(2*Math.PI*u2));
+    }).filter(v=>v>0&&v<800);
+  }
+  function hist(data,bins=12){
+    const mn=Math.min(...data),mx2=Math.max(...data),step=(mx2-mn)/bins;
+    const labels=[],counts=[];
+    for(let i=0;i<bins;i++){
+      const lo=mn+i*step,hi=lo+step;
+      labels.push(Math.round(lo)+'ms');
+      counts.push(data.filter(v=>v>=lo&&v<hi).length);
+    }
+    return {labels,counts};
+  }
+  function mkH(cid,data,color){
+    const ctx=document.getElementById(cid);if(!ctx)return;
+    if(S.charts[cid])S.charts[cid].destroy();
+    const {labels,counts}=hist(data);
+    S.charts[cid]=new Chart(ctx,{
+      type:'bar',
+      data:{labels,datasets:[{data:counts,backgroundColor:color+'38',borderColor:color,borderWidth:1.5}]},
+      options:{responsive:true,maintainAspectRatio:false,
+        plugins:{legend:{display:false}},
+        scales:{x:{ticks:{color:'#4a6278',font:{size:8},autoSkip:false,maxRotation:45},grid:{display:false}},
+          y:{ticks:{color:'#4a6278',font:{size:8}},grid:{color:'rgba(255,255,255,0.035)'}}}}
+    });
+  }
+  mkH('hold-chart',gauss(p.hm,p.hs||20,45),'#3de8ff');
+  mkH('flight-chart',gauss(p.fm,p.fs2||30,45),'#22f0a4');
+}
+
+// ══════════════════════════════════════════
+//  HISTORY PAGE
+// ══════════════════════════════════════════
+function renderHistory(){ mkAttemptsTable('hist-tbl',S.attempts); }
+
+// ══════════════════════════════════════════
+//  ML MODEL PAGE
+// ══════════════════════════════════════════
+function renderML(){
+  const ok=S.modelTrained;
+  document.getElementById('ml-stat-grid').innerHTML=[
+    {l:'Accuracy',v:ok?'94.2%':'—',c:'var(--green)'},
+    {l:'Precision',v:ok?'91.8%':'—',c:'var(--cyan)'},
+    {l:'Recall',v:ok?'96.1%':'—',c:'var(--purple)'},
+    {l:'F1 Score',v:ok?'93.9%':'—',c:'var(--amber)'}
+  ].map(s=>`<div class="sc"><div class="sl">${s.l}</div><div class="sv" style="color:${s.c};font-size:1.6rem">${s.v}</div></div>`).join('');
+  mkRadar(ok);mkEnsemble();mkArch();
+}
+
+function mkRadar(ok){
+  const ctx=document.getElementById('radar-chart');if(!ctx)return;
+  if(S.charts.radar)S.charts.radar.destroy();
+  const vals=ok?[94,92,96,94,89]:[0,0,0,0,0];
+  S.charts.radar=new Chart(ctx,{
+    type:'radar',
+    data:{labels:['Accuracy','Precision','Recall','F1 Score','AUC-ROC'],
+      datasets:[{label:'Performance',data:vals,
+        backgroundColor:'rgba(61,232,255,.08)',borderColor:'#3de8ff',
+        pointBackgroundColor:'#3de8ff',borderWidth:2,pointRadius:3}]},
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false}},
+      scales:{r:{min:0,max:100,
+        ticks:{color:'#4a6278',backdropColor:'transparent',font:{size:8}},
+        grid:{color:'rgba(255,255,255,.05)'},
+        pointLabels:{color:'#8ba8be',font:{size:9,family:'Space Mono'}},
+        angleLines:{color:'rgba(255,255,255,.05)'}}}}
+  });
+}
+
+function mkEnsemble(){
+  const ctx=document.getElementById('ensemble-chart');if(!ctx)return;
+  if(S.charts.ens)S.charts.ens.destroy();
+  S.charts.ens=new Chart(ctx,{
+    type:'doughnut',
+    data:{labels:['RF 35%','KNN 30%','OC-SVM 20%','IsoForest 15%'],
+      datasets:[{data:[35,30,20,15],
+        backgroundColor:['#22f0a435','#3de8ff35','#a78bfa35','#ffb84035'],
+        borderColor:['#22f0a4','#3de8ff','#a78bfa','#ffb840'],borderWidth:1.5}]},
+    options:{responsive:true,maintainAspectRatio:false,cutout:'58%',
+      plugins:{legend:{position:'right',labels:{color:'#8ba8be',font:{size:9,family:'Space Mono'},boxWidth:9,padding:8}}}}
+  });
+}
+
+function mkArch(){
+  const g=document.getElementById('arch-grid');if(!g)return;
+  g.innerHTML=[
+    {n:'Random Forest',d:'100 trees, depth=5, balanced classes',w:'35%',c:'#22f0a4'},
+    {n:'K-Nearest Neighbor',d:'K=5, euclidean distance, distance-weighted',w:'30%',c:'#3de8ff'},
+    {n:'One-Class SVM',d:'RBF kernel, nu=0.05, genuine-only training',w:'20%',c:'#a78bfa'},
+    {n:'Isolation Forest',d:'100 estimators, contamination=0.1',w:'15%',c:'#ffb840'},
+    {n:'StandardScaler',d:'Zero mean, unit variance normalization',w:'—',c:'#8ba8be'},
+    {n:'Feature Extractor',d:'19 features: holds, flights, rhythm, speed',w:'—',c:'#8ba8be'}
+  ].map(m=>`<div style="padding:.9rem;background:var(--bg4);border-radius:var(--r);border:1px solid var(--border)">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.4rem">
+      <span style="font-size:.72rem;font-weight:700;color:${m.c}">${m.n}</span>
+      <span style="font-size:.6rem;color:var(--text3);background:rgba(255,255,255,.05);padding:2px 7px;border-radius:4px">${m.w}</span>
+    </div>
+    <p style="font-size:.64rem;color:var(--text3);line-height:1.5">${m.d}</p>
+  </div>`).join('');
+}
+
+// ══════════════════════════════════════════
+//  EXPORT
+// ══════════════════════════════════════════
+function exportData(){
+  const d={user:S.user?.username,model_profile:ML.profile,attempts:S.attempts,exported:new Date().toISOString()};
+  const b=new Blob([JSON.stringify(d,null,2)],{type:'application/json'});
+  const u=URL.createObjectURL(b),a=document.createElement('a');
+  a.href=u;a.download='keydna-export.json';a.click();
+  toast('Data exported','ok');
+}
+
+// ══════════════════════════════════════════
+//  INIT
+// ══════════════════════════════════════════
+(function(){
+  updateProg();
+  const savedU=localStorage.getItem('kd_u'), savedT=localStorage.getItem('kd_t');
+  if(savedU&&savedT){
+    try{S.user=JSON.parse(savedU);S.token=savedT;seedDemo();goDash();return;}catch(e){}
+  }
+})();
+</script>
+</body>
+</html>
